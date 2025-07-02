@@ -15,23 +15,50 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Bucket',
+            name="Bucket",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100)),
-                ('region', models.CharField(max_length=50)),
-                ('prefix', models.CharField(blank=True, max_length=100, null=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=100)),
+                ("region", models.CharField(max_length=50)),
+                ("prefix", models.CharField(blank=True, max_length=100, null=True)),
             ],
         ),
         migrations.CreateModel(
-            name='BucketPermission',
+            name="BucketPermission",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('can_view', models.BooleanField(default=False)),
-                ('can_upload', models.BooleanField(default=False)),
-                ('can_delete', models.BooleanField(default=False)),
-                ('bucket', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='buckets.bucket')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("can_view", models.BooleanField(default=False)),
+                ("can_upload", models.BooleanField(default=False)),
+                ("can_delete", models.BooleanField(default=False)),
+                (
+                    "bucket",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, to="buckets.bucket"
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]
