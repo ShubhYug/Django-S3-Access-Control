@@ -1,10 +1,13 @@
-# Create your views here.
 import boto3
 from botocore.exceptions import ClientError
 from decouple import config
-from django.shortcuts import get_object_or_404
+from django.contrib.auth import logout
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from rest_framework import permissions, status
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from rest_framework import permissions
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -12,7 +15,7 @@ from rest_framework.views import APIView
 from .models import Bucket, BucketPermission
 from .serializers import BucketSerializer
 
-# Create AWS S3 client
+# AWS S3 client setup
 aws_client = boto3.client(
     "s3",
     aws_access_key_id=config("AWS_ACCESS_KEY_ID"),
@@ -21,6 +24,11 @@ aws_client = boto3.client(
 
 
 class BucketListView(APIView):
+    """
+    API view to list all buckets the authenticated user has permission to view.
+    GET /api/buckets/
+    """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
@@ -31,13 +39,18 @@ class BucketListView(APIView):
         serializer = BucketSerializer(buckets, many=True)
         return Response(serializer.data)
 
-
 class BucketObjectsView(APIView):
+    """
+    API view to list all objects in a given bucket the user is allowed to view.
+    GET /api/buckets/<bucket_id>/objects/
+    """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, bucket_id):
         bucket = get_object_or_404(Bucket, id=bucket_id)
-        perm = get_object_or_404(
+        print("bucket : ", bucket)
+        get_object_or_404(
             BucketPermission, user=request.user, bucket=bucket, can_view=True
         )
 
@@ -52,12 +65,17 @@ class BucketObjectsView(APIView):
 
 
 class UploadObjectView(APIView):
+    """
+    API view to upload an object to a bucket if the user has upload permissions.
+    POST /api/buckets/<bucket_id>/upload/
+    """
+
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser]
 
     def post(self, request, bucket_id):
         bucket = get_object_or_404(Bucket, id=bucket_id)
-        perm = get_object_or_404(
+        get_object_or_404(
             BucketPermission, user=request.user, bucket=bucket, can_upload=True
         )
 
@@ -77,11 +95,16 @@ class UploadObjectView(APIView):
 
 
 class DeleteObjectView(APIView):
+    """
+    API view to delete an object from a bucket if the user has delete permissions.
+    DELETE /api/buckets/<bucket_id>/objects/<key>/
+    """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def delete(self, request, bucket_id, key):
         bucket = get_object_or_404(Bucket, id=bucket_id)
-        perm = get_object_or_404(
+        get_object_or_404(
             BucketPermission, user=request.user, bucket=bucket, can_delete=True
         )
 
@@ -90,3 +113,75 @@ class DeleteObjectView(APIView):
             return Response({"message": "Deleted successfully"})
         except ClientError as e:
             return Response({"error": str(e)}, status=500)
+
+
+# -------------------------------
+# UI Views for HTML rendering
+# -------------------------------
+
+
+@login_required
+def bucket_browser(request):
+    """
+    Renders the HTML UI page showing the list of buckets and objects the user can view.
+    """
+    permissions_qs = BucketPermission.objects.filter(user=request.user, can_view=True)
+    buckets = []
+
+    for perm in permissions_qs:
+        bucket = perm.bucket
+        objects = aws_client.list_objects_v2(
+            Bucket=bucket.name, Prefix=bucket.prefix or ""
+        )
+        keys = [obj["Key"] for obj in objects.get("Contents", [])]
+        buckets.append({"id": bucket.id, "name": bucket.name, "objects": keys})
+
+    return render(request, "buckets.html", {"buckets": buckets})
+
+
+@login_required
+@csrf_exempt
+def handle_upload_form(request, bucket_id):
+    """
+    Handles the file upload form submitted from the HTML interface.
+    """
+    if request.method == "POST":
+        file = request.FILES.get("file")
+        bucket = get_object_or_404(Bucket, id=bucket_id)
+        get_object_or_404(
+            BucketPermission, user=request.user, bucket=bucket, can_upload=True
+        )
+
+        if file:
+            key = f"{file.name}"
+            aws_client.upload_fileobj(file, bucket.name, key)
+
+    return redirect("bucket-browser")
+
+
+@login_required
+@require_POST
+@csrf_exempt
+def handle_delete(request, bucket_id, key):
+    """
+    Handles the delete form submitted from the HTML interface to remove an object from a bucket.
+    """
+    bucket = get_object_or_404(Bucket, id=bucket_id)
+    get_object_or_404(
+        BucketPermission, user=request.user, bucket=bucket, can_delete=True
+    )
+
+    try:
+        aws_client.delete_object(Bucket=bucket.name, Key=key)
+    except ClientError:
+        pass
+
+    return redirect("bucket-browser")
+
+
+def logout_view(request):
+    """
+    Logs the user out and redirects to the login page.
+    """
+    logout(request)
+    return redirect("login")

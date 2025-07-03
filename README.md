@@ -17,6 +17,41 @@ This is a Django-based REST API application that provides a simple S3 browser to
   - Delete files from authorized buckets
 - Permissions are enforced strictly on the server side
 
+## 🖥️ UI Usage Instructions
+This project also includes an HTML interface (UI) for users to interact with S3 buckets. Here's how to access and use it:
+
+### 🔐 1. Login
+Navigate to: http://localhost:8000/login/
+
+Enter your Django username and password.
+
+Upon successful login, you will be redirected to the S3 bucket browser page.
+
+### 📂 2. View Buckets
+After login, you will see a list of S3 buckets you have permission to view (can_view=True).
+
+Each bucket will display a list of objects stored within it.
+
+### 📤 3. Upload a File
+Each bucket card contains an upload form.
+
+Choose a file using the file picker.
+
+Click the Upload button.
+
+If you have can_upload=True permission for that bucket, the file will be uploaded to S3.
+
+### 🗑️ 4. Delete a File
+Next to each listed object, you will find a Delete button.
+
+Click it and confirm deletion in the popup.
+
+If you have can_delete=True permission, the object will be deleted from the bucket.
+
+### 🚪 5. Logout
+Click the Logout button in the top-right corner to safely end your session.
+
+
 ## ⚙️ Setup Instructions
 
 ### 1. Create and Activate Virtual Environment
