@@ -13,7 +13,7 @@
   <div class="container">
     <div class="top-bar">
       <div><h3>Welcome {{ user.username }}</h3></div>
-      <div class="logout"><button type="button" onclick="location.href='{% url 'logout' %}'">Logout</button></div>
+      <div class="logout"><button type="button" onclick="location.href='{% url 'logout' %}';">Logout</button></div>
     </div>
 
     {% for bucket in buckets %}
@@ -23,21 +23,24 @@
           {% for obj in bucket.objects %}
             <li>
               <span>{{ obj }}</span>
+              {% if bucket.can_delete %}
               <form method="post" action="{% url 'delete' bucket.id obj %}" style="margin: 0;">
                 {% csrf_token %}
                 <button type="submit" onclick="return confirm('Delete {{ obj }}?');">Delete</button>
               </form>
+              {% endif %}
             </li>
           {% empty %}
             <li><em>No objects found</em></li>
           {% endfor %}
         </ul>
-
+        {% if bucket.can_upload %}
         <form method="post" enctype="multipart/form-data" action="{% url 'upload' bucket.id %}">
           {% csrf_token %}
           <input type="file" name="file" required>
           <button type="submit">Upload</button>
         </form>
+        {% endif %}
       </div>
     {% empty %}
       <p>No buckets available for your account.</p>

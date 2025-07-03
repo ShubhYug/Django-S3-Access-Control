@@ -122,11 +122,11 @@ class DeleteObjectView(APIView):
 
 @login_required
 def bucket_browser(request):
-    """
-    Renders the HTML UI page showing the list of buckets and objects the user can view.
-    """
     permissions_qs = BucketPermission.objects.filter(user=request.user, can_view=True)
     buckets = []
+
+    if not permissions_qs.exists():
+        return render(request, "buckets.html", {"buckets": [], "message": "You do not have access to any buckets."})
 
     for perm in permissions_qs:
         bucket = perm.bucket
@@ -134,7 +134,13 @@ def bucket_browser(request):
             Bucket=bucket.name, Prefix=bucket.prefix or ""
         )
         keys = [obj["Key"] for obj in objects.get("Contents", [])]
-        buckets.append({"id": bucket.id, "name": bucket.name, "objects": keys})
+        buckets.append({
+            "id": bucket.id,
+            "name": bucket.name,
+            "objects": keys,
+            "can_upload": perm.can_upload,
+            "can_delete": perm.can_delete
+        })
 
     return render(request, "buckets.html", {"buckets": buckets})
 
